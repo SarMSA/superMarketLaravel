@@ -2,8 +2,13 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Api\baseController as BaseContoller;
+use App\Models\Post;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
+use App\Http\Resources\Post as PostResource;
+use App\Http\Controllers\Api\baseController as BaseContoller;
+
 
 class PostController extends BaseContoller
 {
@@ -15,16 +20,11 @@ class PostController extends BaseContoller
     public function index()
     {
         //
-    }
+        // $post = Post::where('user_id', Auth::id())->get();
+        $post = Post::all();
 
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
-    {
-        //
+        return $this->sendResponse(PostResource::collection($post), 'post retrieved successfully');
+
     }
 
     /**
@@ -36,6 +36,17 @@ class PostController extends BaseContoller
     public function store(Request $request)
     {
         //
+        $validator = Validator::make($request->all(), [
+            'content' => 'required|min:5',
+            'product_id' => 'required'
+        ]);
+        if($validator->fails()){
+            return $this->sendError('validate Error', $validator->errors());
+        }
+        $request['user_id'] = Auth::id();
+        $post = Post::create($request->all());
+        return $this->sendResponse($post, 'post added successfully');
+
     }
 
     /**
@@ -47,17 +58,12 @@ class PostController extends BaseContoller
     public function show($id)
     {
         //
-    }
+        $post = Post::find($id);
+        if(is_null($post)) {
+            return $this->sendError('error', 'not found');
+        }
+        return $this->sendResponse(new PostResource($post), 'post is found');
 
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function edit($id)
-    {
-        //
     }
 
     /**
@@ -67,9 +73,21 @@ class PostController extends BaseContoller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, Post $post)
     {
         //
+        $validator = validator::make($request->all(), [
+            'content' => 'required|min:5',
+            'product_id' => 'required'
+        ]);
+        if($validator->fails()){
+            return $this->sendError('validate Error', $validator->errors());
+        }
+        $post->content = $request->content;
+        $post->product_id = $request->product_id;
+        $post->save();
+
+        return $this->sendResponse(new PostResource($post), 'post updated successfully');
     }
 
     /**
@@ -78,8 +96,10 @@ class PostController extends BaseContoller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
+    public function destroy(Post $post)
     {
         //
+        $post->delete();
+        return $this->sendResponse(new PostResource($post), 'post deleted successfully');
     }
 }
